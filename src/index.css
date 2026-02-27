@@ -1,0 +1,47 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+@import 'nes.css/css/nes.min.css';
+
+:root {
+  --app-bg: #212529;
+  --app-text: #f8f9fa;
+  --app-primary: #ffc107;
+  --app-secondary: #0dcaf0;
+  --app-danger: #dc3545;
+}
+
+body {
+  font-family: 'Press Start 2P', cursive;
+  background-color: var(--app-bg);
+  color: var(--app-text);
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+/* 確保繁體中文可以正常顯示，因為 Press Start 2P 不支援中文，我們加上備用字型 */
+body, button, input, textarea, select {
+  font-family: 'Press Start 2P', 'Noto Sans TC', sans-serif !important;
+}
+
+#root {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+  box-sizing: border-box;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--app-primary);
+  text-shadow: 2px 2px 0px #000;
+  line-height: 1.5;
+}
+
+/* 一些輔助動畫 */
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.blink {
+  animation: blink 1s infinite;
+}
