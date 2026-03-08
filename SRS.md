@@ -10,7 +10,7 @@
 本文件旨在定義「My Training Plan (訓練計畫)」之軟體需求規格。本系統主要目的是提供使用者客製化訓練計畫，並能整合 YouTube 影片或本地端實體影片檔案作為訓練示範或背景音樂的網頁應用程式。
 
 ### 1.2 產品範圍 (Product Scope)
-「My Training Plan」是一個基於網頁前端技術（React + TypeScript）開發的單頁應用程式 (SPA)。
+「My Training Plan」是一個前後台分離架構 (Client-Server) 的網頁應用程式。前端基於 React + TypeScript 開發 (SPA)，後端基於 .NET Core Web API 搭配 SQL Server。
 系統允許使用者：
 - 建立並編輯自訂的訓練計畫（包含多個訓練階段）。
 - 每個階段可以選擇 YouTube 影片連結或本地端資料夾的影片路徑，可指定播放起訖秒數。
@@ -25,12 +25,17 @@
 
 ## 2. 整體描述 (Overall Description)
 
-### 2.1 產品視角 (Product Perspective) & 著作權法律風險迴避
-本產品是一個獨立運作的純前端應用程式，沒有後端伺服器與資料庫。所有的狀態與資料（如訓練清單配置）都將利用瀏覽器的 Local Storage 或 IndexedDB 技術進行持久化儲存。影片播放功能則是高度依賴外部的 YouTube IFrame API (透過 `react-youtube` 套件實作) 以及網頁原生的 HTML5 `<video>` API (用於播放本地端檔案)。
+### 2.1 產品視角 (Product Perspective) & 架構設計
+本產品是一個前後台分離 (Client-Server) 架構的 Web 應用程式。
+1. **前端 (Client)**：使用 React 技術建立單頁應用程式 (SPA)，負責所有的 UI 展示、影片播放 (YouTube IFrame API & HTML5 `<video>`) 及倒數邏輯。
+2. **後端 (Server)**：使用 .NET Core Web API 建置於本地端 VM/IIS 上，負責處理前端的 HTTP 請求，並擔任資料存取層。
+3. **資料庫 (Database)**：使用 SQL Server。所有的狀態與資料（如專案 ID、訓練清單階段細節、URL 或本地影片位址）接儲存於後端資料庫中。
 
-為防範著作權爭議與法律問題，系統**絕對不會**具備影片上傳至外部伺服器的功能。
+這種架構允許系統突破純瀏覽器的儲存限制，實現真正的本地端資料中心化管理與檔案映射。
+
+為防範著作權爭議與法律問題，系統**絕對不會**具備影片上傳至外部伺服器的功能：
 - **YouTube 影片**：僅儲存外部公開的 URL 網址並透過官方 IFrame API 播放，版權責任由來源平台管理。
-- **本地端影片**：針對實體影片檔案，系統運行在「零上傳 (Zero-Upload)」機制下，所有檔案讀取與影片解碼播映皆百分之百在使用者本地端的瀏覽器記憶體內進行。系統僅會儲存能夠指向電腦內部該檔案的「控制存取路徑/代碼 (Reference)」，且不會將哪怕 1kb 的檔案內容傳輸至外部網路。
+- **本地端影片 (零上傳機制)**：系統設計為「內部網路/本機管理工具」。使用者無需將實體影片上傳至網頁，只需將影片放置於後端 VM 指定的實體資料夾中，然後在前端輸入該檔案的相對路徑名稱。後端 .NET 伺服器會將該資料夾設為「靜態檔案伺服器 (Static File Provider)」，讓前端能直接透過 API 網址 (如 `http://vm-ip/videos/my_run.mp4`) 串流播放在你本機的影片，完美迴避所有著作權上傳與分享爭議。
 
 ### 2.2 產品功能摘要 (Product Functions)
 1. **首頁儀表板管理**：提供進入點，讓使用者檢視目前的訓練專案（目前以單一主要專案實作），並進入設定頁面。
@@ -92,15 +97,15 @@
     - **倒秒提示**：訓練中或休息中剩下 3、2、1 秒時，分別用語音播報「三」、「二」、「一」。
     - 進入 **FINISHED** 時：「訓練完成，太棒了！」。
 
-### 3.5 資料持久化存取 (零上傳機制)
-- **描述**：系統關閉或重新整理後重構目前的訓練菜單配置，並在避免上傳實體檔案的前提下保留對本地影片的存取參考。
-- **實作方式與限制 (防範上傳之本地端檔案參照)**：
-    - 基本的訓練清單設定與 YouTube URL 字串使用瀏覽器 Local Storage 保存。
-    - **解決方案：File System Access API (檔案存取句柄)**：
-        - 為了達成「只存路徑不存影片實體」以避免法律爭議，當使用者從電腦中選擇實體影片時，系統會調用 `File System Access API`，取得一個針對該路徑檔案的**「檔案存取控制代碼 (File Handle)」**。
-        - 系統會將這個 File Handle (非影片本身) 序列化後存入瀏覽器端的 **IndexedDB** 中。
-        - **安全性與重整讀取流程**：當使用者下次開啟或重新整理網頁時，系統會從 IndexedDB 取出該 File Handle。基於 HTML5 安全性設計，此時代碼沒有自動讀取檔案的權限；系統會在介面上提示並經由呼叫 API 彈出瀏覽器原生的對話框，詢問使用者：**「是否允許網頁再次存取您電腦中的這個檔案？」**。
-        - 使用者點擊同意後，影片即刻載入至 `<video>` 開始運作。此架構能完美達成本地檔案記憶與播放，並保證絕對無任何侵權的上傳下載傳輸行為。
+### 3.5 資料庫設計與持久化存取
+- **描述**：系統的所有設定、專案清單與影片來源，皆集中儲存於後端之 SQL Server。
+- **實作方式**：
+    - 前端 React 透過 RESTful API (例如 `GET /api/projects`, `POST /api/stages`) 即時與後端 .NET Core 伺服器同步訓練菜單的增減與排序。
+    - **本地影片路徑記憶方案**：
+        - 針對本地實體影片，使用者於設定介面輸入/選擇該影片在後端伺服器靜態資料夾內的對應路徑 (如 `video_folder/training1.mp4`)。
+        - 該字串 (Path) 直接作為 `VideoUrl` 欄位寫入 SQL Server 儲存。
+        - 播放時，前端發送請求給後端。後端透過 IIS 內的靜態檔案中介軟體 (Static Files Middleware)，將該實體檔案作為 Media Stream 返回給前端建構的 `<video>` 元素播放。
+        - **優勢**：資料完全持久化不受瀏覽器重整限制，且不違反這是一套個人/區域網路管理系統且不需要處理上傳機制的原則。
 
 ---
 
@@ -110,9 +115,11 @@
 - **視覺風格**：採用暗黑/電競/科技感風格，主色調為深黑 (#0b0f10, #112116) 搭配強烈對比的螢光綠 (#13ec5b / #19e65e) 以及白色文字，呈現專業且動力的氛圍。
 - **響應式設計 (RWD)**：介面必須支援桌上型電腦與行動裝置。在行動裝置上，右側的時間軸 (Timeline) 或設定表單可能需要折疊或改為下方顯示排列。
 
-### 4.2 軟體介面 (Software Interfaces)
+### 4.2 軟體與系統介面 (Software Interfaces)
+- **.NET Core Web API**：後端提供一組 RESTful HTTP(s) API，格式為 JSON，供前端控制資料庫之 CRUD (Create, Read, Update, Delete)。
+- **SQL Server Database**：後端透過 Entity Framework Core 或 Dapper 與關聯式資料庫對接。
 - **YouTube IFrame Player API**：播放 YouTube 影片的核心組件（需經由 `react-youtube` 進行二次封裝）。
-- **HTML5 Video API**：用於播放使用者匯入的本地端影片檔案，並透過 JavaScript 直接控制 `currentTime`, `play()`, `pause()` 等屬性。
+- **HTML5 Video API**：用於播放掛載在伺服器靜態資料夾中的本機影片檔案，並透過 JavaScript 直接控制 `currentTime`, `play()`, `pause()` 等屬性。
 - **Web Speech API**：使用 `window.speechSynthesis` 提供中文化 (zh-TW) 語音播報服務。
 
 ---
