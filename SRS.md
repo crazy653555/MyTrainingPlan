@@ -10,7 +10,7 @@
 本文件旨在定義「My Training Plan (訓練計畫)」之軟體需求規格。本系統主要目的是提供使用者客製化訓練計畫，並能整合 YouTube 影片或本地端實體影片檔案作為訓練示範或背景音樂的網頁應用程式。
 
 ### 1.2 產品範圍 (Product Scope)
-「My Training Plan」是一個前後台分離架構 (Client-Server) 的網頁應用程式。前端基於 React + TypeScript 開發 (SPA)，後端基於 .NET Core Web API 搭配 SQL Server。
+「My Training Plan」是一個前後台分離架構 (Client-Server) 的網頁應用程式。前端基於 React + TypeScript 開發 (SPA)，後端基於 .NET Core Web API 搭配 SQLite。
 系統允許使用者：
 - 建立並編輯自訂的訓練計畫（包含多個訓練階段）。
 - 每個階段可以設定外部 YouTube 影片連結，可指定播放起訖秒數。
@@ -25,10 +25,10 @@
 ### 2.1 產品視角 (Product Perspective) & 架構設計
 本產品是一個前後台分離 (Client-Server) 架構的 Web 應用程式。
 1. **前端 (Client)**：使用 React 技術建立單頁應用程式 (SPA)，負責所有的 UI 展示、YouTube 影片播放 (YouTube IFrame API) 及倒數邏輯。
-2. **後端 (Server)**：使用 .NET Core Web API 建置於本地端 VM/IIS 上，負責處理前端的 HTTP 請求，並擔任資料存取層。
-3. **資料庫 (Database)**：使用 SQL Server。所有的狀態與資料（如專案 ID、訓練清單階段細節、YouTube URL）接儲存於後端資料庫中。
+2. **後端 (Server)**：使用 .NET Core Web API 開發，採三層式架構設計與 Autofac 實現依賴注入 (DI) 以保持高度彈性。程式直接透過 Kestrel 伺服器於本地端獨立運行，無需依賴 IIS 架設。
+3. **資料庫 (Database)**：目前為實驗階段，選擇使用 SQLite。SQLite 可以直接將資料記錄在本地端的檔案中，未來有需要時由於三層式架構的切分，也可輕鬆抽換成 SQL Server 或其他資料庫。所有的狀態與資料（如專案 ID、訓練階段細節、YouTube URL）皆儲存於此資料庫中。
 
-這套架構允許系統突破純瀏覽器的儲存限制，實現真正的本地端資料中心化管理。未來如果有額外擴充 (如本地端影片串流) 需求，此架構也保留了極大彈性。
+這套彈性架構允許系統突破純瀏覽器的儲存限制，實現真正的本地端資料中心化管理，並且開發與部署極輕量化 (不依賴重量級 IIS 或 SQL Server 服務)。
 
 為防範著作權爭議與法律問題：
 - **第一版限制 (V1)**：第一版系統中，影片來源**強制限定為外部公開的 YouTube URL 網址**。
@@ -95,11 +95,11 @@
     - 進入 **FINISHED** 時：「訓練完成，太棒了！」。
 
 ### 3.5 資料庫設計與持久化存取
-- **描述**：系統的訓練菜單等設定皆集中儲存於後端之 SQL Server。
+- **描述**：系統的訓練菜單等設定皆集中儲存於後端之 SQLite 資料庫。
 - **實作方式**：
     - 第一版 (v1) 主要記錄與專案對應之 YouTube URL、階段名稱及各項秒數參數設定。
     - 前端 React 透過 RESTful API (例如 `GET /api/projects`, `POST /api/stages`) 即時與後端 .NET Core 伺服器同步訓練菜單的增添、修改與排序狀態。
-    - **優勢**：資料集中管理且完美持久化，即使使用者更換瀏覽器裝置，也可藉由 API 取回相同的訓練配置紀錄。
+    - **優勢**：資料集中管理且完美持久化，且透過輕量化 SQLite 與 Kestrel 伺服器，使用者能在本機輕鬆將環境跑起來，無需繁瑣設定。
 
 ---
 
@@ -110,8 +110,8 @@
 - **響應式設計 (RWD)**：介面必須支援桌上型電腦與行動裝置。在行動裝置上，右側的時間軸 (Timeline) 或設定表單可能需要折疊或改為下方顯示排列。
 
 ### 4.2 軟體與系統介面 (Software Interfaces)
-- **.NET Core Web API**：後端提供一組 RESTful HTTP(s) API，格式為 JSON，供前端控制資料庫之 CRUD (Create, Read, Update, Delete)。
-- **SQL Server Database**：後端透過 Entity Framework Core 或 Dapper 與關聯式資料庫對接。
+- **.NET Core Web API**：後端提供一組 RESTful HTTP(s) API，格式為 JSON，供前端控制資料庫之 CRUD (Create, Read, Update, Delete)。採 Kestrel 獨立運行，無需 IIS。
+- **SQLite Database**：後端透過 Entity Framework Core 或 Dapper (經 Repository Pattern 封裝) 與 SQLite 檔案資料庫對接。
 - **YouTube IFrame Player API**：播放 YouTube 影片的核心組件（需經由 `react-youtube` 進行二次封裝）。
 - **Web Speech API**：使用 `window.speechSynthesis` 提供中文化 (zh-TW) 語音播報服務。
 

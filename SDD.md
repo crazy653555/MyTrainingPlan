@@ -15,13 +15,13 @@
 ### 2.1 拓撲結構
 - **使用者端 (Client)**：瀏覽器 (Chrome, Edge, Safari)。
 - **前端伺服器/靜態資源**：使用 Vite 打包的 React SPA 靜態檔案。
-- **後端 API 伺服器 (Server)**：部署於本機 IIS 虛擬機器上的 .NET Core Web API。
-- **資料庫伺服器 (Database)**：部署於本機 VM 的 SQL Server。
+- **後端 API 伺服器 (Server)**：使用 .NET Core Web API，透過內建 Kestrel 伺服器於本地端獨立運行，不依賴 IIS。
+- **資料庫 (Database)**：使用本地端 SQLite 資料庫檔案。
 
 ### 2.2 技術選型
 - **前端 (Frontend)**：React 18+, TypeScript, Vite, Tailwind CSS, Zustand (客製化狀態), Axios / React Query (資料請求), react-youtube。
-- **後端 (Backend)**：.NET 8 Web API, C#, Entity Framework Core (EF Core) / Dapper。
-- **資料庫 (Database)**：Microsoft SQL Server。
+- **後端 (Backend)**：.NET 8 Web API, C#, 三層式架構 (3-Tier), Autofac (DI), Entity Framework Core (EF Core) / Dapper。
+- **資料庫 (Database)**：SQLite。
 
 ---
 
@@ -86,11 +86,22 @@
 ---
 
 ## 5. 後端實作方案 (Backend Implementation - .NET Core)
-1. **Controller 層**：如 `ProjectsController`, `StagesController`，負責路由與 HTTP 狀態碼驗證。
-2. **Service / Manager 層**：處理業務邏輯，例如「當新增階段時，自動取得目前清單最大 `OrderIdx` + 1 作為新階段的排序值」。
-3. **資料存取層**：
-   - 建議採用 **Entity Framework Core (Code-First)**。定義 `Project` 與 `Stage` 模型後，透過 `Add-Migration` 與 `Update-Database` 建立 SQL Server Schema。
-   - 需設定 CORS (Cross-Origin Resource Sharing)，允許前端 (如 `http://localhost:5173`) 呼叫。
+為確保專案極大的彈性與可維護性，後端採用 **嚴謹的三層式架構 (3-Tier Architecture)** 並結合 **Autofac** 進行依賴注入 (Dependency Injection)。整個專案具備自帶 Kestrel 伺服器的特性，能在本地端 `dotnet run` 即可獨立執行，無需依賴 IIS 環境。
+
+### 5.1 架構分層設計
+1. **API 層 (Presentation Layer / Controllers)**：
+   - 負責接收 HTTP 請求、參數基礎驗證、路由配置、並回傳相對應的 HTTP 狀態碼與 JSON 結果。
+   - 例：`ProjectsController`, `StagesController`。本身不包含任何業務邏輯，直接注入對應的 `IService`。
+2. **業務邏輯層 (Business Logic Layer / Services)**：
+   - 負責核心邏輯處理，例如計算最大排序值 (OrderIdx)、資料檢查與封裝。
+   - 定義並實作如 `IProjectService`, `IStageService`。
+3. **資料存取層 (Data Access Layer / Repositories)**：
+   - 負責直接與 Entity Framework Core (或 Dapper) 溝通，對資料庫執行實質的 CRUD 動作。此層對上提供如 `IProjectRepository`, `IStageRepository` 等抽象介面，完美屏蔽底層 SQL 詳細實作。
+
+### 5.2 技術配置
+- **依賴注入 (DI)**：引入 `Autofac` 作為主要 DI 容器，利用 Module 的概念統一註冊各層的 Services 與 Repositories，增強擴充性。
+- **資料庫套件**：引入 `Microsoft.EntityFrameworkCore.Sqlite`。於 `Program.cs` 設定連線字串至本機的 `.sqlite3` 檔案，透過 `Add-Migration` 與 `Update-Database` 維護 Schema。
+- **跨域設定 (CORS)**：設定允許前端 (如 `http://localhost:5173`) 發起請求。
 
 ---
 
