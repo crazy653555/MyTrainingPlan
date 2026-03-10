@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Home } from './components/Home';
 import { PracticeConfig } from './components/PracticeConfig';
 import { PlayerDashboard } from './components/PlayerDashboard';
@@ -7,8 +7,29 @@ import { usePracticeStore } from './hooks/usePracticeStore';
 type PageView = 'HOME' | 'SETUP' | 'PLAYER';
 
 function App() {
-  const [currentView, setCurrentView] = useState<PageView>('HOME');
+  const [currentView, setCurrentView] = useState<PageView>(() => {
+    const hash = window.location.hash.replace('#', '');
+    if (hash === 'SETUP') return 'SETUP';
+    if (hash === 'PLAYER') return 'PLAYER';
+    return 'HOME';
+  });
+
   const { items } = usePracticeStore();
+
+  useEffect(() => {
+    window.location.hash = currentView;
+  }, [currentView]);
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '') as PageView;
+      if (['HOME', 'SETUP', 'PLAYER'].includes(hash)) {
+        setCurrentView(hash);
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   const handleStartPractice = () => {
     if (items.length === 0) {

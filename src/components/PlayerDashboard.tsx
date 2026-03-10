@@ -44,7 +44,7 @@ export const PlayerDashboard: React.FC<PlayerDashboardProps> = ({ onExit }) => {
     // 訓練時: 播放階段專屬影片
     // 休息時: 播放全域休息影片 (若有)，否則顯示空白或單純倒數
     let activeVideoUrl = '';
-    if (period === 'PRACTICING' && currentStage?.youtubeUrl) {
+    if ((period === 'PRACTICING' || period === 'PREPARING') && currentStage?.youtubeUrl) {
         activeVideoUrl = currentStage.youtubeUrl;
     } else if (period === 'RESTING' && restVideoUrl) {
         activeVideoUrl = restVideoUrl;
@@ -136,6 +136,15 @@ export const PlayerDashboard: React.FC<PlayerDashboardProps> = ({ onExit }) => {
                         } else if (state === 0) { // 播放結束
                             playerRef.current.seekTo(startSec, true);
                             playerRef.current.playVideo();
+                        } else if (state !== 1 && state !== 3) {
+                            // 若不是在播放中且不是 buffering，強制播放
+                            playerRef.current.playVideo();
+                        }
+                    } else if (period === 'PREPARING') {
+                        if (state === 1) { // 如果在準備階段卻開始播了，把它按暫停並跳到開頭
+                            const startSec = currentStage?.startSecond ?? 0;
+                            playerRef.current.pauseVideo();
+                            playerRef.current.seekTo(startSec, true);
                         }
                     } else if (period === 'RESTING') {
                         if (state === 1 && !restVideoRandomizedRef.current) {
@@ -172,15 +181,27 @@ export const PlayerDashboard: React.FC<PlayerDashboardProps> = ({ onExit }) => {
         playerRef.current = event.target;
         const startSec = period === 'RESTING' ? restStartTime : (currentStage?.startSecond ?? 0);
         event.target.loadVideoById({ videoId: activeVideoId, startSeconds: startSec });
-        event.target.playVideo();
+        if (period === 'PRACTICING' || period === 'RESTING') {
+            event.target.playVideo();
+        } else {
+            event.target.pauseVideo();
+        }
     };
 
     useEffect(() => {
         if (playerRef.current && activeVideoId && typeof playerRef.current.loadVideoById === 'function') {
             const startSec = period === 'RESTING' ? restStartTime : (currentItem?.startSecond ?? 0);
-            if (period === 'PRACTICING' || period === 'RESTING') {
+            if (period === 'PRACTICING' || period === 'RESTING' || period === 'PREPARING') {
                 try {
                     playerRef.current.loadVideoById({ videoId: activeVideoId, startSeconds: startSec });
+                    if (period === 'PREPARING') {
+                        // 準備時只載入不播放
+                        setTimeout(() => {
+                            if (playerRef.current && typeof playerRef.current.pauseVideo === 'function') {
+                                playerRef.current.pauseVideo();
+                            }
+                        }, 500);
+                    }
                 } catch (e) { console.error("YT Player Error:", e); }
             }
         }

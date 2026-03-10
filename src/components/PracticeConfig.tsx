@@ -192,21 +192,28 @@ export const PracticeConfig: React.FC<PracticeConfigProps> = ({ onStartPractice,
                         {/* Global Rest Video Setting */}
                         <div className="mb-2 bg-white dark:bg-[#1a2e22] border border-slate-200 dark:border-[#244730] rounded-xl p-4 shadow-sm">
                             <label className="block text-sm font-semibold mb-2 text-slate-700 dark:text-slate-300 uppercase tracking-tight">Global Rest Background Video</label>
-                            <div className="flex gap-2">
-                                <div className="relative flex-1">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                                        <span className="material-symbols-outlined text-[18px]">link</span>
+                            <div className="flex flex-col md:flex-row gap-4">
+                                <div className="flex-1 flex flex-col gap-2">
+                                    <div className="relative w-full">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                            <span className="material-symbols-outlined text-[18px]">link</span>
+                                        </div>
+                                        <input
+                                            type="url"
+                                            className="w-full bg-slate-50 dark:bg-[#112217] border border-slate-200 dark:border-[#346544] rounded-lg py-2.5 pl-10 pr-4 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-[#19e65e] focus:ring-1 focus:ring-[#19e65e]"
+                                            value={restVideoUrl}
+                                            onChange={e => setRestVideoUrl(e.target.value)}
+                                            placeholder="https://www.youtube.com/watch?v=..."
+                                        />
                                     </div>
-                                    <input
-                                        type="url"
-                                        className="w-full bg-slate-50 dark:bg-[#112217] border border-slate-200 dark:border-[#346544] rounded-lg py-2.5 pl-10 pr-4 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-[#19e65e] focus:ring-1 focus:ring-[#19e65e]"
-                                        value={restVideoUrl}
-                                        onChange={e => setRestVideoUrl(e.target.value)}
-                                        placeholder="https://www.youtube.com/watch?v=..."
-                                    />
+                                    <p className="text-xs text-slate-500 dark:text-[#93c8a5]">Plays during rest periods. Auto-starts at a random time if it's a long video.</p>
                                 </div>
+                                {restVideoUrl && extractVideoId(restVideoUrl) && (
+                                    <div className="w-full md:w-48 aspect-video rounded-xl overflow-hidden bg-black shrink-0 border border-slate-200 dark:border-[#244730]">
+                                        <img className="w-full h-full object-cover opacity-80" src={`https://img.youtube.com/vi/${extractVideoId(restVideoUrl)}/hqdefault.jpg`} alt="Rest Video Preview" />
+                                    </div>
+                                )}
                             </div>
-                            <p className="text-xs text-slate-500 dark:text-[#93c8a5] mt-2">Plays during rest periods. Auto-starts at a random time if it's a long video.</p>
                         </div>
 
                         <div className="relative pl-4 md:pl-0">
