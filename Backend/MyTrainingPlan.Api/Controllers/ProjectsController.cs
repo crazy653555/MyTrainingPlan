@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
+using MyTrainingPlan.Api.Dtos;
 using MyTrainingPlan.Api.Models;
 using MyTrainingPlan.Api.Services;
 
@@ -15,14 +17,17 @@ namespace MyTrainingPlan.Api.Controllers
     public class ProjectsController : ControllerBase
     {
         private readonly IProjectService _projectService;
+        private readonly IMapper _mapper;
 
         /// <summary>
         /// 初始化 <see cref="ProjectsController"/> 類別的新執行個體
         /// </summary>
         /// <param name="projectService">專案業務邏輯服務</param>
-        public ProjectsController(IProjectService projectService)
+        /// <param name="mapper">AutoMapper 轉換器</param>
+        public ProjectsController(IProjectService projectService, IMapper mapper)
         {
             _projectService = projectService;
+            _mapper = mapper;
         }
 
         /// <summary>
@@ -30,10 +35,11 @@ namespace MyTrainingPlan.Api.Controllers
         /// </summary>
         /// <returns>所有專案的陣列</returns>
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Project>>> GetProjects()
+        public async Task<ActionResult<IEnumerable<ProjectResponse>>> GetProjects()
         {
             var projects = await _projectService.GetAllProjectsAsync();
-            return Ok(projects);
+            var response = _mapper.Map<IEnumerable<ProjectResponse>>(projects);
+            return Ok(response);
         }
 
         /// <summary>
@@ -42,51 +48,48 @@ namespace MyTrainingPlan.Api.Controllers
         /// <param name="id">專案的唯一識別碼</param>
         /// <returns>專案資訊；若找不到則回傳 404 NotFound</returns>
         [HttpGet("{id}")]
-        public async Task<ActionResult<Project>> GetProject(Guid id)
+        public async Task<ActionResult<ProjectResponse>> GetProject(Guid id)
         {
             var project = await _projectService.GetProjectWithStagesAsync(id);
             if (project == null)
             {
                 return NotFound();
             }
-            return Ok(project);
+            var response = _mapper.Map<ProjectResponse>(project);
+            return Ok(response);
         }
 
         /// <summary>
         /// 建立新的專案
         /// </summary>
-        /// <param name="project">要建立的專案內容</param>
+        /// <param name="request">要建立的專案內容</param>
         /// <returns>回傳 201 Created 狀態碼並附帶新建專案資訊</returns>
         [HttpPost]
-        public async Task<ActionResult<Project>> CreateProject(Project project)
+        public async Task<ActionResult<ProjectResponse>> CreateProject(ProjectUpsertRequest request)
         {
+            var project = _mapper.Map<Project>(request);
             var createdProject = await _projectService.CreateProjectAsync(project);
-            return CreatedAtAction(nameof(GetProject), new { id = createdProject.Id }, createdProject);
+            var response = _mapper.Map<ProjectResponse>(createdProject);
+            return CreatedAtAction(nameof(GetProject), new { id = response.Id }, response);
         }
 
         /// <summary>
         /// 更新現有的專案資訊
         /// </summary>
         /// <param name="id">欲更新的專案 ID</param>
-        /// <param name="project">新的專案資料</param>
+        /// <param name="request">新的專案資料</param>
         /// <returns>成功則回傳 204 NoContent</returns>
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateProject(Guid id, Project project)
+        public async Task<IActionResult> UpdateProject(Guid id, ProjectUpsertRequest request)
         {
-            if (id != project.Id)
-            {
-                return BadRequest();
-            }
-
             var existingProject = await _projectService.GetProjectAsync(id);
             if (existingProject == null)
             {
                 return NotFound();
             }
 
-            // Map fields manually or via AutoMapper
-            existingProject.Name = project.Name;
-            existingProject.GlobalRestVideoUrl = project.GlobalRestVideoUrl;
+            // 使用 AutoMapper 將 Request 的內容映射到已存在的 Entity
+            _mapper.Map(request, existingProject);
 
             await _projectService.UpdateProjectAsync(existingProject);
 

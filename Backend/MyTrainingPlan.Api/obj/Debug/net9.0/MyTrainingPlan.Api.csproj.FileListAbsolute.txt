@@ -310,3 +310,5 @@ C:\D\Project\MyTrainingPlan\Backend\MyTrainingPlan.Api\obj\Debug\net9.0\refint\M
 C:\D\Project\MyTrainingPlan\Backend\MyTrainingPlan.Api\obj\Debug\net9.0\MyTrainingPlan.Api.pdb
 C:\D\Project\MyTrainingPlan\Backend\MyTrainingPlan.Api\obj\Debug\net9.0\MyTrainingPlan.Api.genruntimeconfig.cache
 C:\D\Project\MyTrainingPlan\Backend\MyTrainingPlan.Api\obj\Debug\net9.0\ref\MyTrainingPlan.Api.dll
+C:\D\Project\MyTrainingPlan\Backend\MyTrainingPlan.Api\bin\Debug\net9.0\AutoMapper.dll
+C:\D\Project\MyTrainingPlan\Backend\MyTrainingPlan.Api\bin\Debug\net9.0\AutoMapper.Extensions.Microsoft.DependencyInjection.dll

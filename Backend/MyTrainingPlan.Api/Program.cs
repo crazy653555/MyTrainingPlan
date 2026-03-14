@@ -5,6 +5,8 @@ using MyTrainingPlan.Api.Data;
 
 using MyTrainingPlan.Api.Repositories;
 using MyTrainingPlan.Api.Services;
+using MyTrainingPlan.Api.Middleware;
+using MyTrainingPlan.Api.Profiles;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -42,6 +44,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 // 註冊標準的控制器服務
 builder.Services.AddControllers();
+// 註冊 AutoMapper
+builder.Services.AddAutoMapper(typeof(TrainingProfile));
 // 啟用 OpenAPI / Swagger 解析 (適用於 .NET 9+)
 builder.Services.AddOpenApi();
 
@@ -53,6 +57,9 @@ if (app.Environment.IsDevelopment())
     // 在開發環境下暴露 API 文件
     app.MapOpenApi();
 }
+
+// 使用全域異常處理中間件
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 // 啟用預設的 HTTPS 重新導向
 app.UseHttpsRedirection();

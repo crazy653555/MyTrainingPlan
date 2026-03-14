@@ -20,7 +20,7 @@
 
 ### 2.2 技術選型
 - **前端 (Frontend)**：React 18+, TypeScript, Vite, Tailwind CSS, Zustand (客製化狀態), Axios / React Query (資料請求), react-youtube。
-- **後端 (Backend)**：.NET 8 Web API, C#, 三層式架構 (3-Tier), Autofac (DI), Entity Framework Core (EF Core) / Dapper。
+- **後端 (Backend)**：.NET 9 Web API, C#, 三層式架構 (3-Tier), Autofac (DI), Entity Framework Core (EF Core), AutoMapper (物件映射)。
 - **資料庫 (Database)**：SQLite。
 
 ---
@@ -100,6 +100,8 @@
 
 ### 5.2 技術配置
 - **依賴注入 (DI)**：引入 `Autofac` 作為主要 DI 容器，利用 Module 的概念統一註冊各層的 Services 與 Repositories，增強擴充性。
+- **資料傳輸設計 (DTO)**：引入 DTO (Data Transfer Objects) 以解耦資料庫實體模型與 API 合約，並使用 `AutoMapper` 進行物件間的自動映射。
+- **錯誤處理機制**：實作 `ExceptionHandlingMiddleware` 全域捕捉未預期異常，統一以 RFC 7807 (Problem Details) 格式回應。
 - **資料庫套件**：引入 `Microsoft.EntityFrameworkCore.Sqlite`。於 `Program.cs` 設定連線字串至本機的 `.sqlite3` 檔案，透過 `Add-Migration` 與 `Update-Database` 維護 Schema。
 - **跨域設定 (CORS)**：設定允許前端 (如 `http://localhost:5173`) 發起請求。
 

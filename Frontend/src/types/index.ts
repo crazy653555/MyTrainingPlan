@@ -1,29 +1,59 @@
-/// <summary>
-/// 代表一個單獨訓練階段 (Stage) 的資料結構
-/// </summary>
-export interface PracticeItem {
-  /// 階段的唯一識別碼 (對應後端 Stage.Id)
-  id: string;
-  /// 所屬專案的唯一識別碼
-  projectId?: string;
-  /// 訓練階段的名稱 (例如："深蹲"、"伏地挺身")
-  stageName: string;
-  /// 該階段搭配播放的 YouTube 影片連結
-  youtubeUrl: string;
-  /// 本階段所設定的訓練時間長度 (秒)
-  practiceSeconds: number;
-  /// 本階段結束後所需要的休息時間長度 (秒)
-  restSeconds: number;
-  /// 影片開始播放的秒數
-  startSecond?: number;
-  /// 影片結束播放的秒數 (可選填)
-  endSecond?: number;
-  /// 在所有階段列表中的排序順序 (數字越小越前面)
-  orderIdx?: number;
-}
+import { z } from 'zod';
 
-/// <summary>
-/// 定義整個訓練計畫在播放時可能處於的狀態
-/// IDLE (閒置) -> PREPARING (預備倒數) -> PRACTICING (訓練中) -> RESTING (休息中) -> FINISHED (全部完成)
-/// </summary>
+/**
+ * 專案回傳資料傳輸物件 (與後端 ProjectResponse 同步)
+ */
+export const ProjectResponseSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  globalRestVideoUrl: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  stages: z.array(z.lazy(() => StageResponseSchema))
+});
+
+export type ProjectResponse = z.infer<typeof ProjectResponseSchema>;
+
+/**
+ * 階段回傳資料傳輸物件 (與後端 StageResponse 同步)
+ */
+export const StageResponseSchema = z.object({
+  id: z.string().uuid(),
+  projectId: z.string().uuid(),
+  stageName: z.string(),
+  youtubeUrl: z.string().nullable(),
+  practiceSeconds: z.number().int().nonnegative(),
+  restSeconds: z.number().int().nonnegative(),
+  startSecond: z.number().int().nonnegative(),
+  endSecond: z.number().int().nonnegative(),
+  orderIdx: z.number().int().nonnegative()
+});
+
+export type StageResponse = z.infer<typeof StageResponseSchema>;
+
+/**
+ * 階段新增或更新請求物件 (與後端 StageUpsertRequest 同步)
+ */
+export const StageUpsertRequestSchema = z.object({
+  projectId: z.string().uuid().optional(),
+  stageName: z.string().min(1, '階段名稱為必填').max(100, '階段名稱長度不能超過 100 字元'),
+  youtubeUrl: z.string().nullable().optional(),
+  practiceSeconds: z.number().int().nonnegative(),
+  restSeconds: z.number().int().nonnegative(),
+  startSecond: z.number().int().nonnegative(),
+  endSecond: z.number().int().nonnegative(),
+  orderIdx: z.number().int().nonnegative().optional()
+});
+
+export type StageUpsertRequest = z.infer<typeof StageUpsertRequestSchema>;
+
+/**
+ * 代表一個單獨訓練階段 (Stage) 的資料結構 (相容舊版名稱，建議逐步替換為 StageResponse)
+ */
+export interface PracticeItem extends StageResponse {}
+
+/**
+ * 定義整個訓練計畫在播放時可能處於的狀態
+ * IDLE (閒置) -> PREPARING (預備倒數) -> PRACTICING (訓練中) -> RESTING (休息中) -> FINISHED (全部完成)
+ */
 export type TimerState = 'IDLE' | 'PREPARING' | 'PRACTICING' | 'RESTING' | 'FINISHED';

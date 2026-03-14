@@ -10,7 +10,7 @@
 本文件旨在定義「My Training Plan (訓練計畫)」之軟體需求規格。本系統主要目的是提供使用者客製化訓練計畫，並能整合 YouTube 影片或本地端實體影片檔案作為訓練示範或背景音樂的網頁應用程式。
 
 ### 1.2 產品範圍 (Product Scope)
-「My Training Plan」是一個前後台分離架構 (Client-Server) 的網頁應用程式。前端基於 React + TypeScript 開發 (SPA)，後端基於 .NET Core Web API 搭配 SQLite。
+「My Training Plan」是一個前後台分離架構 (Client-Server) 的網頁應用程式。前端基於 React + TypeScript 開發 (SPA)，後端基於 .NET 9 Web API 搭配 SQLite。
 系統允許使用者：
 - 建立並編輯自訂的訓練計畫（包含多個訓練階段）。
 - 每個階段可以設定外部 YouTube 影片連結，可指定播放起訖秒數。

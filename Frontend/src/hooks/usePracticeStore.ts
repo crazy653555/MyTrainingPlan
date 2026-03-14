@@ -1,6 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
+import { z } from 'zod';
 import api from '../api';
-import type { PracticeItem } from '../types';
+import { 
+    type ProjectResponse, 
+    type StageResponse, 
+    type StageUpsertRequest, 
+    ProjectResponseSchema, 
+    StageResponseSchema
+} from '../types';
 
 // V1 版本預設寫死的專案 ID
 const PROJECT_ID = '00000000-0000-0000-0000-000000000001';
@@ -17,11 +25,12 @@ export const usePracticeStore = () => {
     // ===============
 
     // 呼叫 API 取得專案詳細資料 (主要是為了獲取全域休息影片設定)
-    const { data: projectData } = useQuery({
+    const { data: projectData } = useQuery<ProjectResponse>({
         queryKey: ['project', PROJECT_ID],
         queryFn: async () => {
             const res = await api.get(`/projects/${PROJECT_ID}`);
-            return res.data;
+            // 使用 Zod 驗證回傳資料結構
+            return ProjectResponseSchema.parse(res.data);
         }
     });
 
@@ -33,12 +42,18 @@ export const usePracticeStore = () => {
         mutationFn: async (newUrl: string) => {
             if (!projectData) return;
             await api.put(`/projects/${PROJECT_ID}`, {
-                ...projectData,
+                name: projectData.name, // 依照後端 DTO 結構傳遞
                 globalRestVideoUrl: newUrl
             });
         },
-        // 更新成功後，刷新前端專案資料的快取
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['project', PROJECT_ID] })
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['project', PROJECT_ID] });
+            toast.success('專案設定已更新');
+        },
+        onError: (err: any) => {
+            console.error('Update project failed:', err);
+            toast.error('更專案設定失敗');
+        }
     });
 
     // 對外部匯出的「設定全域影片網址」方法
@@ -51,11 +66,12 @@ export const usePracticeStore = () => {
     // ===============
 
     // 取得此專案底下的所有訓練階段 (Practice Items)
-    const { data: items = [] } = useQuery<PracticeItem[]>({
+    const { data: items = [] } = useQuery<StageResponse[]>({
         queryKey: ['stages', PROJECT_ID],
         queryFn: async () => {
             const res = await api.get(`/stages/project/${PROJECT_ID}`);
-            return res.data;
+            // 使用 Zod 驗證陣列中每個項目的結構
+            return z.array(StageResponseSchema).parse(res.data);
         }
     });
 
@@ -65,21 +81,36 @@ export const usePracticeStore = () => {
 
     // 新增訓練階段 API 呼叫
     const addMutation = useMutation({
-        mutationFn: async (item: Omit<PracticeItem, 'id' | 'projectId'>) => {
+        mutationFn: async (item: StageUpsertRequest) => {
             await api.post('/stages', { ...item, projectId: PROJECT_ID });
         },
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['stages', PROJECT_ID] })
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['stages', PROJECT_ID] });
+            toast.success('已新增訓練階段');
+        },
+        onError: (err: any) => {
+            console.error('Add stage failed:', err);
+            toast.error('新增階段失敗');
+        }
     });
 
     // 更新訓練階段 API 呼叫
     const updateMutation = useMutation({
-        mutationFn: async ({ id, updatedFields }: { id: string, updatedFields: Partial<Omit<PracticeItem, 'id'>> }) => {
+        mutationFn: async ({ id, updatedFields }: { id: string, updatedFields: Partial<StageUpsertRequest> }) => {
             const target = items.find(i => i.id === id);
             if (!target) return;
-            // 結合原有資料再覆蓋更新的欄位
-            await api.put(`/stages/${id}`, { ...target, ...updatedFields });
+            // 結合原有資料再覆蓋更新的欄位，並過濾掉 id/projectId 等不應在 Body 中的欄位
+            const { id: _, projectId: __, orderIdx: ___, ...rest } = target;
+            await api.put(`/stages/${id}`, { ...rest, ...updatedFields });
         },
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['stages', PROJECT_ID] })
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['stages', PROJECT_ID] });
+            toast.success('階段已更新');
+        },
+        onError: (err: any) => {
+            console.error('Update stage failed:', err);
+            toast.error('更新階段失敗');
+        }
     });
 
     // 刪除訓練階段 API 呼叫
@@ -87,7 +118,14 @@ export const usePracticeStore = () => {
         mutationFn: async (id: string) => {
             await api.delete(`/stages/${id}`);
         },
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['stages', PROJECT_ID] })
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['stages', PROJECT_ID] });
+            toast.success('已刪除階段');
+        },
+        onError: (err: any) => {
+            console.error('Delete stage failed:', err);
+            toast.error('刪除階段失敗');
+        }
     });
 
     // 儲存新的排序到後端的 API 呼叫
@@ -95,13 +133,22 @@ export const usePracticeStore = () => {
         mutationFn: async (updates: { id: string, orderIdx: number }[]) => {
             await api.put(`/stages/project/${PROJECT_ID}/reorder`, updates);
         },
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['stages', PROJECT_ID] })
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['stages', PROJECT_ID] });
+            // 排序通常不需要 toast，避免過於頻繁
+        },
+        onError: (err: any) => {
+            console.error('Reorder failed:', err);
+            toast.error('排序更新失敗，請重新整理');
+            // 發生錯誤時，刷新資料以恢復正確順序
+            queryClient.invalidateQueries({ queryKey: ['stages', PROJECT_ID] });
+        }
     });
 
     // 提供給外部元件呼叫的包裝方法
-    const addItem = (item: Omit<PracticeItem, 'id'>) => addMutation.mutate(item);
+    const addItem = (item: StageUpsertRequest) => addMutation.mutate(item);
 
-    const updateItem = (id: string, updatedFields: Partial<Omit<PracticeItem, 'id'>>) => {
+    const updateItem = (id: string, updatedFields: Partial<StageUpsertRequest>) => {
         updateMutation.mutate({ id, updatedFields });
     };
 

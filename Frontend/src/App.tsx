@@ -1,37 +1,39 @@
 import { useState, useEffect } from 'react';
+import { Toaster } from 'react-hot-toast';
 import { Home } from './components/Home';
 import { PracticeConfig } from './components/PracticeConfig';
 import { PlayerDashboard } from './components/PlayerDashboard';
 import { usePracticeStore } from './hooks/usePracticeStore';
 
-/// <summary>
-/// 定義應用程式可能呈現的三種主要頁面
-/// HOME: 首頁 / SETUP: 專案編輯頁 / PLAYER: 播放訓練畫面
-/// </summary>
-type PageView = 'HOME' | 'SETUP' | 'PLAYER';
+/**
+ * 應用程式的主要 View 狀態類型
+ */
+type ViewState = 'HOME' | 'SETUP' | 'PLAYER';
 
+/**
+ * 應用程式的主進入點元件
+ * 負責處理簡易的 Hash 路由與全域配置
+ */
 function App() {
-  // 管理目前畫面顯示的狀態，並根據網址 Hash 進行初始化
-  const [currentView, setCurrentView] = useState<PageView>(() => {
-    const hash = window.location.hash.replace('#', '');
-    if (hash === 'SETUP') return 'SETUP';
-    if (hash === 'PLAYER') return 'PLAYER';
-    return 'HOME';
+  // 透過 URL Hash 來判斷當前要顯示哪一個分頁，預設為 HOME
+  const [view, setView] = useState<ViewState>(() => {
+    const hash = window.location.hash.replace('#', '').toUpperCase();
+    return (['HOME', 'SETUP', 'PLAYER'].includes(hash) ? hash : 'HOME') as ViewState;
   });
 
   const { items } = usePracticeStore();
 
-  // 若當下檢視狀態變化時，主動同步更新網址 Hash，以便使用者能正常重新整理或回上一頁
+  // 當 View 狀態改變時，同步更新 URL Hash
   useEffect(() => {
-    window.location.hash = currentView;
-  }, [currentView]);
+    window.location.hash = view.toLowerCase();
+  }, [view]);
 
   // 監聽網址 Hash 變化並更新元件內部狀態
   useEffect(() => {
     const handleHashChange = () => {
-      const hash = window.location.hash.replace('#', '') as PageView;
+      const hash = window.location.hash.replace('#', '').toUpperCase() as ViewState;
       if (['HOME', 'SETUP', 'PLAYER'].includes(hash)) {
-        setCurrentView(hash);
+        setView(hash);
       }
     };
     window.addEventListener('hashchange', handleHashChange);
@@ -44,27 +46,29 @@ function App() {
       alert('請先設定訓練項目！');
       return;
     }
-    setCurrentView('PLAYER');
+    setView('PLAYER');
   };
 
   return (
-    <div className="min-h-screen bg-[#0b0f10] text-[#eef6f0]">
-      {currentView === 'HOME' && (
-        <Home
-          onCreateProject={() => setCurrentView('SETUP')}
-          onViewProjects={() => setCurrentView('SETUP')}
+    <div className="min-h-screen bg-[#0b0f10] text-gray-100 font-sans selection:bg-[#13ec5b] selection:text-[#0b0f10]">
+      <Toaster position="top-right" />
+      
+      {view === 'HOME' && (
+        <Home 
+          onCreateProject={() => setView('SETUP')} 
+          onViewProjects={() => setView('SETUP')} 
         />
       )}
-
-      {currentView === 'SETUP' && (
-        <PracticeConfig
-          onStartPractice={handleStartPractice}
-          onBack={() => setCurrentView('HOME')}
+      
+      {view === 'SETUP' && (
+        <PracticeConfig 
+          onBack={() => setView('HOME')} 
+          onStartPractice={handleStartPractice} 
         />
       )}
-
-      {currentView === 'PLAYER' && (
-        <PlayerDashboard onExit={() => setCurrentView('SETUP')} />
+      
+      {view === 'PLAYER' && (
+        <PlayerDashboard onExit={() => setView('SETUP')} />
       )}
     </div>
   );
