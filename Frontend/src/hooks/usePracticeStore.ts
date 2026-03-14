@@ -10,13 +10,11 @@ import {
     StageResponseSchema
 } from '../types';
 
-// V1 版本預設寫死的專案 ID
-const PROJECT_ID = '00000000-0000-0000-0000-000000000001';
-
 /// <summary>
 /// 管理所有訓練階段狀態的自訂 Hook (搭配 React Query 使用與後端溝通)
 /// </summary>
-export const usePracticeStore = () => {
+/// <param name="projectId">專案 ID。若為 null 則代表新專案，不會載入資料。</param>
+export const usePracticeStore = (projectId: string | null = null) => {
     // 取得 React Query 的 Client，以利後續呼叫 invalidateQueries 刷新快取
     const queryClient = useQueryClient();
 
@@ -26,12 +24,14 @@ export const usePracticeStore = () => {
 
     // 呼叫 API 取得專案詳細資料 (主要是為了獲取全域休息影片設定)
     const { data: projectData } = useQuery<ProjectResponse>({
-        queryKey: ['project', PROJECT_ID],
+        queryKey: ['project', projectId],
         queryFn: async () => {
-            const res = await api.get(`/projects/${PROJECT_ID}`);
+            if (!projectId) return null as any;
+            const res = await api.get(`/projects/${projectId}`);
             // 使用 Zod 驗證回傳資料結構
             return ProjectResponseSchema.parse(res.data);
-        }
+        },
+        enabled: !!projectId // 只有在有 projectId 時才啟動查詢
     });
 
     // 取得專案的全域休息影片網址，如果沒有設定則套用預設的環境音/風景影片
@@ -40,14 +40,16 @@ export const usePracticeStore = () => {
     // 呼叫 API 更新專案的全域影片設定
     const updateProjectMutation = useMutation({
         mutationFn: async (newUrl: string) => {
-            if (!projectData) return;
-            await api.put(`/projects/${PROJECT_ID}`, {
+            if (!projectId || !projectData) return;
+            await api.put(`/projects/${projectId}`, {
                 name: projectData.name, // 依照後端 DTO 結構傳遞
                 globalRestVideoUrl: newUrl
             });
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['project', PROJECT_ID] });
+            if (projectId) {
+                queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+            }
             toast.success('專案設定已更新');
         },
         onError: (err: any) => {
@@ -67,12 +69,14 @@ export const usePracticeStore = () => {
 
     // 取得此專案底下的所有訓練階段 (Practice Items)
     const { data: items = [] } = useQuery<StageResponse[]>({
-        queryKey: ['stages', PROJECT_ID],
+        queryKey: ['stages', projectId],
         queryFn: async () => {
-            const res = await api.get(`/stages/project/${PROJECT_ID}`);
+            if (!projectId) return [];
+            const res = await api.get(`/stages/project/${projectId}`);
             // 使用 Zod 驗證陣列中每個項目的結構
             return z.array(StageResponseSchema).parse(res.data);
-        }
+        },
+        enabled: !!projectId
     });
 
     // ===============
@@ -82,15 +86,21 @@ export const usePracticeStore = () => {
     // 新增訓練階段 API 呼叫
     const addMutation = useMutation({
         mutationFn: async (item: StageUpsertRequest) => {
-            await api.post('/stages', { ...item, projectId: PROJECT_ID });
+            if (!projectId) {
+                // 如果是新計畫，這裡可能需要先建立專案，或提示
+                throw new Error('請先儲存專案後再新增階段');
+            }
+            await api.post('/stages', { ...item, projectId });
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['stages', PROJECT_ID] });
+            if (projectId) {
+                queryClient.invalidateQueries({ queryKey: ['stages', projectId] });
+            }
             toast.success('已新增訓練階段');
         },
         onError: (err: any) => {
             console.error('Add stage failed:', err);
-            toast.error('新增階段失敗');
+            toast.error(err.message || '新增階段失敗');
         }
     });
 
@@ -104,7 +114,9 @@ export const usePracticeStore = () => {
             await api.put(`/stages/${id}`, { ...rest, ...updatedFields });
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['stages', PROJECT_ID] });
+            if (projectId) {
+                queryClient.invalidateQueries({ queryKey: ['stages', projectId] });
+            }
             toast.success('階段已更新');
         },
         onError: (err: any) => {
@@ -119,7 +131,9 @@ export const usePracticeStore = () => {
             await api.delete(`/stages/${id}`);
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['stages', PROJECT_ID] });
+            if (projectId) {
+                queryClient.invalidateQueries({ queryKey: ['stages', projectId] });
+            }
             toast.success('已刪除階段');
         },
         onError: (err: any) => {
@@ -131,17 +145,22 @@ export const usePracticeStore = () => {
     // 儲存新的排序到後端的 API 呼叫
     const reorderMutation = useMutation({
         mutationFn: async (updates: { id: string, orderIdx: number }[]) => {
-            await api.put(`/stages/project/${PROJECT_ID}/reorder`, updates);
+            if (!projectId) return;
+            await api.put(`/stages/project/${projectId}/reorder`, updates);
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['stages', PROJECT_ID] });
+            if (projectId) {
+                queryClient.invalidateQueries({ queryKey: ['stages', projectId] });
+            }
             // 排序通常不需要 toast，避免過於頻繁
         },
         onError: (err: any) => {
             console.error('Reorder failed:', err);
             toast.error('排序更新失敗，請重新整理');
             // 發生錯誤時，刷新資料以恢復正確順序
-            queryClient.invalidateQueries({ queryKey: ['stages', PROJECT_ID] });
+            if (projectId) {
+                queryClient.invalidateQueries({ queryKey: ['stages', projectId] });
+            }
         }
     });
 
@@ -169,7 +188,7 @@ export const usePracticeStore = () => {
         [newItems[index], newItems[swapIndex]] = [newItems[swapIndex], newItems[index]];
 
         // 為了避免畫面閃爍或載入中斷層，我們先在本地樂觀更新 (Optimistic Update)
-        queryClient.setQueryData(['stages', PROJECT_ID], newItems);
+        queryClient.setQueryData(['stages', projectId], newItems);
 
         // 將最新陣列順序轉換成所有階段的新 OrderIdx
         const updates = newItems.map((item, idx) => ({ id: item.id, orderIdx: idx }));

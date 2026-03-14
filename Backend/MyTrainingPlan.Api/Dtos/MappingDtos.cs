@@ -9,7 +9,7 @@ namespace MyTrainingPlan.Api.Dtos
     /// </summary>
     public class ProjectResponse
     {
-        public int Id { get; set; }
+        public Guid Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public string? GlobalRestVideoUrl { get; set; }
         public DateTime CreatedAt { get; set; }
@@ -34,14 +34,14 @@ namespace MyTrainingPlan.Api.Dtos
     /// </summary>
     public class StageResponse
     {
-        public int Id { get; set; }
-        public int ProjectId { get; set; }
+        public Guid Id { get; set; }
+        public Guid ProjectId { get; set; }
         public string StageName { get; set; } = string.Empty;
         public string? YoutubeUrl { get; set; }
         public int PracticeSeconds { get; set; }
         public int RestSeconds { get; set; }
         public int StartSecond { get; set; }
-        public int EndSecond { get; set; }
+        public int? EndSecond { get; set; }
         public int OrderIdx { get; set; }
     }
 
@@ -50,6 +50,11 @@ namespace MyTrainingPlan.Api.Dtos
     /// </summary>
     public class StageUpsertRequest
     {
+        /// <summary>
+        /// 所屬專案的 ID（新增時必填）
+        /// </summary>
+        public Guid? ProjectId { get; set; }
+
         [Required(ErrorMessage = "階段名稱為必填")]
         [StringLength(100, ErrorMessage = "階段名稱長度不能超過 100 字元")]
         public string StageName { get; set; } = string.Empty;

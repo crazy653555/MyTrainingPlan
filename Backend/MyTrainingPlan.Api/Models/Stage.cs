@@ -26,7 +26,7 @@ namespace MyTrainingPlan.Api.Models
         /// <summary>
         /// 該訓練階段對應播放的 YouTube 影片網址
         /// </summary>
-        public string YoutubeUrl { get; set; } = string.Empty;
+        public string? YoutubeUrl { get; set; }
 
         /// <summary>
         /// 本階段的訓練時間長度 (以秒為單位)

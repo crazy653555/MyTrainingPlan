@@ -40,7 +40,8 @@ builder.Services.AddCors(options =>
 // 由設定檔取得連接字串，若無則預設產生 mytrainingplan.db
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=mytrainingplan.db";
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite(connectionString));
+    options.UseSqlite(connectionString)
+           .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
 
 // 註冊標準的控制器服務
 builder.Services.AddControllers();

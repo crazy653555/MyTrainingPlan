@@ -5,6 +5,8 @@ import { PracticeConfig } from './components/PracticeConfig';
 import { PlayerDashboard } from './components/PlayerDashboard';
 import { usePracticeStore } from './hooks/usePracticeStore';
 
+import { DEFAULT_PROJECT_ID } from './types';
+
 /**
  * 應用程式的主要 View 狀態類型
  */
@@ -21,7 +23,14 @@ function App() {
     return (['HOME', 'SETUP', 'PLAYER'].includes(hash) ? hash : 'HOME') as ViewState;
   });
 
-  const { items } = usePracticeStore();
+  // 管理當前選擇的專案 ID
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(() => {
+    // 預設進入 SETUP 時，如果是從 HOME 點進來的，會由點擊事件設定
+    // 這裡若是重新整理，暫時回歸 NULL (或可以從 hash 擴充)
+    return null;
+  });
+
+  const { items } = usePracticeStore(currentProjectId);
 
   // 當 View 狀態改變時，同步更新 URL Hash
   useEffect(() => {
@@ -55,20 +64,30 @@ function App() {
       
       {view === 'HOME' && (
         <Home 
-          onCreateProject={() => setView('SETUP')} 
-          onViewProjects={() => setView('SETUP')} 
+          onCreateProject={() => {
+            setCurrentProjectId(null);
+            setView('SETUP');
+          }} 
+          onViewProjects={() => {
+            setCurrentProjectId(DEFAULT_PROJECT_ID);
+            setView('SETUP');
+          }} 
         />
       )}
       
       {view === 'SETUP' && (
         <PracticeConfig 
+          projectId={currentProjectId}
           onBack={() => setView('HOME')} 
           onStartPractice={handleStartPractice} 
         />
       )}
       
       {view === 'PLAYER' && (
-        <PlayerDashboard onExit={() => setView('SETUP')} />
+        <PlayerDashboard 
+          projectId={currentProjectId}
+          onExit={() => setView('SETUP')} 
+        />
       )}
     </div>
   );

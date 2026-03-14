@@ -1,12 +1,22 @@
 import { z } from 'zod';
 
+// V1 版本預設寫死的專案 ID
+export const DEFAULT_PROJECT_ID = '00000000-0000-0000-0000-000000000001';
+
+// 使用較寬鬆的 GUID 格式驗證 (允許後端的 Seed GUID，如 00000000-0000-0000-0000-000000000001)
+const guidSchema = z.string().regex(
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/,
+  { message: 'Invalid GUID format' }
+);
+
 /**
  * 專案回傳資料傳輸物件 (與後端 ProjectResponse 同步)
  */
 export const ProjectResponseSchema = z.object({
-  id: z.string().uuid(),
+  id: guidSchema,
   name: z.string(),
-  globalRestVideoUrl: z.string().nullable(),
+  // 後端可能回傳空字串 "" 而非 null，使用 transform 統一轉換為 null
+  globalRestVideoUrl: z.string().nullable().optional().transform(v => v || null),
   createdAt: z.string(),
   updatedAt: z.string(),
   stages: z.array(z.lazy(() => StageResponseSchema))
@@ -18,14 +28,14 @@ export type ProjectResponse = z.infer<typeof ProjectResponseSchema>;
  * 階段回傳資料傳輸物件 (與後端 StageResponse 同步)
  */
 export const StageResponseSchema = z.object({
-  id: z.string().uuid(),
-  projectId: z.string().uuid(),
+  id: guidSchema,
+  projectId: guidSchema,
   stageName: z.string(),
-  youtubeUrl: z.string().nullable(),
+  youtubeUrl: z.string().nullable().optional().transform(v => v || null),
   practiceSeconds: z.number().int().nonnegative(),
   restSeconds: z.number().int().nonnegative(),
   startSecond: z.number().int().nonnegative(),
-  endSecond: z.number().int().nonnegative(),
+  endSecond: z.number().int().nonnegative().nullable().optional(),
   orderIdx: z.number().int().nonnegative()
 });
 
@@ -35,7 +45,7 @@ export type StageResponse = z.infer<typeof StageResponseSchema>;
  * 階段新增或更新請求物件 (與後端 StageUpsertRequest 同步)
  */
 export const StageUpsertRequestSchema = z.object({
-  projectId: z.string().uuid().optional(),
+  projectId: guidSchema.optional(),
   stageName: z.string().min(1, '階段名稱為必填').max(100, '階段名稱長度不能超過 100 字元'),
   youtubeUrl: z.string().nullable().optional(),
   practiceSeconds: z.number().int().nonnegative(),

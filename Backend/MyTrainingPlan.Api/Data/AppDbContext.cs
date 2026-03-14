@@ -53,7 +53,7 @@ namespace MyTrainingPlan.Api.Data
             {
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.StageName).IsRequired().HasMaxLength(100);
-                entity.Property(e => e.YoutubeUrl).IsRequired().HasMaxLength(500);
+                entity.Property(e => e.YoutubeUrl).HasMaxLength(500);
 
                 // 設定一對多關係：一個 Project 有多個 Stage，刪除 Project 時級聯刪除 Stage
                 entity.HasOne(d => d.Project)

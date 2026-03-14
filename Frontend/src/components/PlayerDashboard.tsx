@@ -9,12 +9,13 @@ import { TimerDisplay } from './Player/TimerDisplay';
 import { TimelineItem } from './Player/TimelineItem';
 
 interface PlayerDashboardProps {
+    projectId: string | null;
     onExit: () => void;
 }
 
 const PREPARE_SECONDS = 3;
 
-export const PlayerDashboard: React.FC<PlayerDashboardProps> = ({ onExit }) => {
+export const PlayerDashboard: React.FC<PlayerDashboardProps> = ({ projectId, onExit }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [period, setPeriod] = useState<TimerState>('PREPARING');
     const [timeLeft, setTimeLeft] = useState(PREPARE_SECONDS);
@@ -23,7 +24,7 @@ export const PlayerDashboard: React.FC<PlayerDashboardProps> = ({ onExit }) => {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const restVideoRandomizedRef = useRef(false);
 
-    const { items, restVideoUrl } = usePracticeStore();
+    const { items, restVideoUrl } = usePracticeStore(projectId);
     const { speak, cancel } = useTTS();
 
     const playerRef = useRef<any>(null);

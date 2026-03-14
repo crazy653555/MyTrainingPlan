@@ -6,12 +6,13 @@ import { StageForm } from './PracticeConfig/StageForm';
 import { type StageResponse } from '../types';
 
 interface PracticeConfigProps {
+    projectId: string | null;
     onStartPractice?: () => void;
     onBack?: () => void;
 }
 
-export const PracticeConfig: React.FC<PracticeConfigProps> = ({ onStartPractice, onBack }) => {
-    const { items, addItem, removeItem, updateItem, moveItem, restVideoUrl, setRestVideoUrl } = usePracticeStore();
+export const PracticeConfig: React.FC<PracticeConfigProps> = ({ projectId, onStartPractice, onBack }) => {
+    const { items, addItem, removeItem, updateItem, moveItem, restVideoUrl, setRestVideoUrl } = usePracticeStore(projectId);
 
     const [editingId, setEditingId] = useState<string | 'NEW' | null>(null);
     const [editName, setEditName] = useState('');
@@ -62,7 +63,7 @@ export const PracticeConfig: React.FC<PracticeConfigProps> = ({ onStartPractice,
         setEditPracticeDuration(secondsToTime(item.practiceSeconds));
         setEditRestDuration(secondsToTime(item.restSeconds));
         setEditStartSecond(item.startSecond !== undefined ? secondsToTime(item.startSecond) : '00:00:00');
-        setEditEndSecond(item.endSecond !== undefined ? secondsToTime(item.endSecond) : '');
+        setEditEndSecond(item.endSecond ? secondsToTime(item.endSecond) : '');
     };
 
     const handleAddNewClick = () => {
